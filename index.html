@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>Erawan Dash: ศึกหนุมานทะลวงทัพ</title>
+<style>
+:root{--gold:#ffd24a;--teal:#2fd6c3;--red:#ff5a6e;--card:rgba(120,30,60,.94);font-family:"Sarabun","Noto Sans Thai",Tahoma,sans-serif}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:#2a0f2e;color:#fff;overflow:hidden;touch-action:manipulation;user-select:none}
+#wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+canvas{display:block}
+.scr{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;padding:14px;text-align:center;overflow:auto;background:rgba(40,10,50,.7);z-index:5}
+.scr.on{display:flex}
+.panel{background:var(--card);border:4px solid var(--gold);border-radius:24px;padding:16px;max-width:560px;width:100%;margin:auto;box-shadow:0 0 0 4px #7a1d3b,0 8px 30px #000a}
+h1{margin:0 0 6px;color:var(--gold);font-size:1.7rem;text-shadow:0 3px 0 #7a1d00}
+.btn{font:inherit;font-weight:800;font-size:1.15rem;color:#3a1500;background:linear-gradient(#ffe27a,#ffb020);border:0;border-bottom:6px solid #b8620b;border-radius:18px;padding:12px 16px;cursor:pointer;width:100%;margin:5px 0}
+.btn:active{transform:translateY(4px);border-bottom-width:2px}
+.btn.t{background:linear-gradient(#6af0e0,#1cb8a6);border-bottom-color:#0e7c6f;color:#023}
+.btn:disabled{opacity:.45}
+input{font:inherit;font-size:1.1rem;width:100%;padding:12px;margin:5px 0;border-radius:14px;border:3px solid var(--teal);background:#2a0f2e;color:#fff;text-align:center}
+#hud{position:fixed;top:0;left:0;right:0;display:none;align-items:center;justify-content:space-between;gap:6px;padding:8px;padding-top:calc(8px + env(safe-area-inset-top,0px));font-weight:800;font-size:.95rem;z-index:3;pointer-events:none}
+#hud .ic{pointer-events:auto;font-size:1.3rem;background:var(--card);border:3px solid var(--gold);border-radius:12px;padding:3px 9px;color:#fff;cursor:pointer}
+#qb{position:fixed;top:calc(52px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);max-width:92%;display:none;background:var(--card);border:3px solid var(--gold);border-radius:16px;padding:8px 14px;font-weight:700;text-align:center;z-index:3;pointer-events:none}
+#tt{position:fixed;left:50%;top:40%;transform:translateX(-50%);background:var(--card);border:3px solid var(--gold);border-radius:16px;padding:8px 16px;display:none;z-index:4;text-align:center;max-width:90%}
+table{width:100%;border-collapse:collapse;font-size:.85rem;margin-top:8px}td,th{padding:4px;border-bottom:1px solid #fff3}
+.err{color:#ffd0d6;min-height:1.2em}
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="cv"></canvas></div>
+<div id="hud"><span id="h1"></span><span id="h2"></span><span id="h3"></span><span id="h4"></span><button class="ic" id="hs">🛒</button><button class="ic" id="hm">🎵</button></div>
+<div id="qb"></div><div id="tt"></div>
+
+<div class="scr on" id="s0"><div class="panel">
+  <h1>🐒 Erawan Dash<br>ศึกหนุมานทะลวงทัพ</h1>
+  <p style="font-size:.95rem;text-align:left">วิ่งฝ่ากองทัพไปให้ถึงช้างเอราวัณ!<br>⌨️ Spacebar หรือ แตะหน้าจอ = กระโดด (กระโดดซ้ำได้ 2 จังหวะ)<br>🪙 เก็บเหรียญตราสวรรค์ · ⚡👹🏹 ต้องหลบ<br>🪨 ค่ายกลคำถาม: กระโดดเหยียบแท่นหินที่เป็นคำตอบที่ถูก แท่นผิดจะถล่ม!</p>
+  <input id="nm" placeholder="ชื่อ-นามสกุล" maxlength="40">
+  <input id="no" placeholder="เลขที่" inputmode="numeric" maxlength="3">
+  <div class="err" id="err"></div>
+  <button class="btn" id="go">▶ ออกศึก!</button>
+</div></div>
+
+<div class="scr" id="s1"><div class="panel">
+  <h1>🛒 ร้านค้าสวรรค์</h1><div>เหรียญ: <b id="sc">0</b> 🪙 (เกมหยุดชั่วคราว)</div>
+  <button class="btn t" id="b1">🛡️ โล่ลมกรดกันชน (5 🪙)</button>
+  <button class="btn t" id="b2">🧪 ยาฟื้นพลัง +1 HP (8 🪙)</button>
+  <button class="btn" id="sx">▶ กลับไปวิ่งต่อ</button>
+</div></div>
+<div class="scr" id="s2"><div class="panel" id="dash"></div></div>
+
+<script>
+/* ===== ชุดคำถาม (เพิ่ม/ลบได้ที่นี่) =====
+   q = คำถาม, o = ตัวเลือก 2-3 ข้อ, a = ลำดับข้อถูก (เริ่มที่ 0), x = คำอธิบายสั้นๆ
+   ค่ายกลคำถามจะปรากฏตามลำดับในอาร์เรย์นี้ */
+const Q=[
+ {q:"ผู้ทรงพระราชนิพนธ์บทพากย์เอราวัณคือพระองค์ใด?",o:["รัชกาลที่ 1","รัชกาลที่ 2","รัชกาลที่ 3"],a:1,x:"รัชกาลที่ 2"},
+ {q:"บทพากย์เอราวัณเป็นตอนหนึ่งของวรรณคดีเรื่องใด?",o:["รามเกียรติ์","อิเหนา","ขุนช้างขุนแผน"],a:0,x:"รามเกียรติ์"},
+ {q:"อินทรชิตแปลงกายเป็นใครขึ้นทรงช้างเอราวัณ?",o:["พระอินทร์","พระพรหม","พระศิวะ"],a:0,x:"พระอินทร์"},
+ {q:"คำว่า \"กุญชร\" หมายถึงอะไร?",o:["ม้า","ช้าง","สิงห์"],a:1,x:"กุญชร = ช้าง"},
+ {q:"ช้างเอราวัณมีกี่เศียร?",o:["7","33","49"],a:1,x:"33 เศียร"},
+ {q:"ช้างเอราวัณ 1 เศียรมีกี่งา?",o:["7 งา","33 งา","14 งา"],a:0,x:"เศียรละ 7 งา"},
+ {q:"1 เศียรมี 7 งา งาละ 7 สระ รวมกี่สระ?",o:["14","49","343"],a:1,x:"7 × 7 = 49"},
+ {q:"บทพากย์เอราวัณใช้ประกอบการแสดงใด?",o:["ละครนอก","โขน","ลิเก"],a:1,x:"โขน"}
+];
+const GATE_GAP=2200, FINISH=GATE_GAP*Q.length+1200, BASE_V=5, GY=370, PX=150;
+const PRICE_SHIELD=5, PRICE_POTION=8, MAX_HP=3;
+
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const cv=$("cv"),ctx=cv.getContext("2d");
+let G=null,name="",no="",last=performance.now(),camT=0,musicOn=true,ac,mg,mi=0;
+const LW=800,LH=450;
+function resize(){
+  const s=Math.min(innerWidth/LW,innerHeight/LH),q=Math.min(2,Math.max(1,(devicePixelRatio||1)*s));
+  cv.style.width=LW*s+"px";cv.style.height=LH*s+"px";cv.width=LW*q;cv.height=LH*q;ctx.setTransform(q,0,0,q,0,0);
+}
+addEventListener("resize",resize);resize();
+function show(id){["s0","s1","s2"].forEach(k=>$(k).classList.toggle("on",k==id))}
+function toast(t,ms=1500){const e=$("tt");e.textContent=t;e.style.display="block";clearTimeout(e._t);e._t=setTimeout(()=>e.style.display="none",ms)}
+
+/* ===== เสียง ===== */
+function note(f,d,v=.4,ty="triangle"){if(!ac)return;const o=ac.createOscillator(),g=ac.createGain();o.type=ty;o.frequency.value=f;o.connect(g);g.connect(mg);
+  g.gain.setValueAtTime(0,ac.currentTime);g.gain.linearRampToValueAtTime(v,ac.currentTime+.02);g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+d);o.start();o.stop(ac.currentTime+d+.05)}
+function startMusic(){if(ac)return;try{ac=new(window.AudioContext||window.webkitAudioContext)();mg=ac.createGain();mg.gain.value=.14;mg.connect(ac.destination);
+  const sc=[0,2,4,7,9,7,4,2,0,4,7,12,9,7,4,2];setInterval(()=>{if(!musicOn||!G||G.paused)return;note(261.6*Math.pow(2,sc[mi%16]/12),.25,.35);if(mi%4==0)note(130.8,.4,.3);mi++},210)}catch(e){ac=null}}
+const sfx=k=>{if(k=="coin")note(1200,.12,.3,"square");else if(k=="jump")note(520,.12,.25);else if(k=="ok")[523,659,784].forEach((f,i)=>setTimeout(()=>note(f,.3,.5),i*80));else note(140,.35,.7,"sawtooth")};
+
+/* ===== เริ่มเกม ===== */
+function start(){
+  name=$("nm").value.trim();no=$("no").value.trim();
+  if(!name||!no){$("err").textContent="กรุณากรอกชื่อและเลขที่ก่อนเล่น";return}
+  startMusic();
+  G={hp:MAX_HP,score:0,coins:0,shield:0,t:0,ok:0,bad:0,dist:0,mul:1,py:GY-56,vy:0,jumps:0,inv:0,obs:[],cns:[],gate:null,gi:0,spawn:60,boss:null,over:false,paused:false,plat:null};
+  show("");$("hud").style.display="flex";hud();
+}
+function hud(){
+  if(!G)return;
+  $("h1").textContent=(G.hp>0?"❤️".repeat(G.hp):"💔")+(G.shield?"🛡️"+G.shield:"");
+  $("h2").textContent="⭐"+G.score;$("h3").textContent="🪙"+G.coins;
+  $("h4").textContent="🏁"+Math.min(100,Math.floor(G.dist/FINISH*100))+"%";
+}
+function jump(){
+  if(!G||G.over||G.paused)return;
+  if(G.jumps<2){G.vy=G.jumps?-11:-12.5;G.jumps++;G.plat=null;sfx("jump")}
+}
+addEventListener("keydown",e=>{if(e.code=="Space"||e.code=="ArrowUp"){e.preventDefault();if(!e.repeat)jump()}});
+cv.addEventListener("pointerdown",e=>{e.preventDefault();jump()});
+
+/* ===== อัปเดตฟิสิกส์และการชน ===== */
+function hit(){
+  if(G.inv>0)return;
+  if(G.shield>0){G.shield--;G.inv=60;toast("🛡️ โล่ลมกรดรับแรงกระแทก!");hud();return}
+  G.hp--;G.inv=90;G.mul=.6;sfx("bad");hud();if(G.hp<=0)finish(false);
+}
+const R=(a,b)=>a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;
+function spawnObs(){
+  const t=Math.random(),o={x:900,t:t<.4?"👹":t<.7?"⚡":"🏹"};
+  if(o.t=="👹"){o.y=GY-50;o.w=38;o.h=50}else if(o.t=="⚡"){o.y=GY-150;o.w=44;o.h=44}else{o.y=GY-70-Math.random()*40;o.w=40;o.h=20;o.fast=1.5}
+  G.obs.push(o);
+  if(Math.random()<.6)for(let i=0;i<5;i++)G.cns.push({x:960+i*40,y:GY-120-Math.sin(i/4*3.14)*60,w:22,h:22});
+}
+function spawnGate(){
+  const q=Q[G.gi],hs=[55,85,115].slice(0,q.o.length).sort(()=>Math.random()-.5);
+  G.gate={q,ps:q.o.map((t,i)=>({x:900+i*280,w:150,y:GY-hs[i],t,ok:i==q.a,st:0,vy:0})),res:false};
+  $("qb").textContent="❓ "+q.q;$("qb").style.display="block";
+}
+function resolveGate(p){
+  const g=G.gate;g.res=true;
+  if(p.ok){p.st=1;G.ok++;G.score+=100;G.coins+=2;sfx("ok");toast("✅ ถูกต้อง! +100 +2🪙 · "+g.q.x,1800)}
+  else{p.st=2;G.bad++;G.score=Math.max(0,G.score-20);G.mul=.55;sfx("bad");toast("💥 แท่นถล่ม! ตอบผิด",1500);G.inv=0;hit()}
+  g.ps.forEach(o=>{if(o!==p)o.st=3});hud();setTimeout(()=>{$("qb").style.display="none"},1500);
+}
+function update(k,dtMs){
+  G.t+=dtMs/1000;G.mul=Math.min(1,G.mul+.0025*k);
+  const v=BASE_V*G.mul*k;G.dist+=v;if(G.inv>0)G.inv-=k;
+  // ฟิสิกส์หนุมาน
+  const prevFeet=G.py+56;
+  if(G.plat&&G.plat.st==2)G.plat=null;
+  if(!G.plat){G.vy+=.62*k;G.py+=G.vy*k}
+  let feet=G.py+56;
+  if(G.gate){for(const p of G.gate.ps){
+    if(p.st==2){p.vy+=.8*k;p.y+=p.vy*k}
+    if(p.st==3)continue;
+    if(G.vy>=0&&PX+30>p.x&&PX+6<p.x+p.w&&prevFeet<=p.y+10&&feet>=p.y&&p.y<GY+50&&p.st!=2){
+      G.py=p.y-56;G.vy=0;G.jumps=0;G.plat=p;feet=p.y;if(!G.gate.res)resolveGate(p);
+    }}}
+  if(G.plat&&(PX+30<=G.plat.x||PX+6>=G.plat.x+G.plat.w))G.plat=null;
+  if(!G.plat&&G.py>=GY-56){G.py=GY-56;G.vy=0;G.jumps=0}
+  const me={x:PX+8,y:G.py+8,w:26,h:44};
+  // สิ่งกีดขวางและเหรียญ
+  for(const o of G.obs){o.x-=v*(o.fast||1);if(!o.dead&&R(me,o)){o.dead=1;hit()}}
+  G.obs=G.obs.filter(o=>o.x>-80&&!o.dead);
+  for(const c of G.cns){c.x-=v;if(!c.dead&&R(me,{x:c.x-6,y:c.y-6,w:34,h:34})){c.dead=1;G.coins++;G.score+=10;sfx("coin");hud()}}
+  G.cns=G.cns.filter(c=>c.x>-40&&!c.dead);
+  // ค่ายกล
+  if(G.gate){G.gate.ps.forEach(p=>p.x-=v);
+    if(G.gate.ps.every(p=>p.x+p.w<-20||p.y>GY+60||p.st==3&&p.x+p.w<-20)||G.gate.ps[G.gate.ps.length-1].x+150<-20){
+      if(!G.gate.res){G.score=Math.max(0,G.score-20);toast("⏭ ข้ามค่ายกล -20");$("qb").style.display="none"}
+      G.gate=null;G.gi++;G.spawn=60}}
+  else if(G.gi<Q.length&&G.dist>=GATE_GAP*(G.gi+1)-GATE_GAP*.2&&!G.obs.length)spawnGate();
+  else if(!G.boss&&G.dist<FINISH-400){G.spawn-=k;if(G.spawn<=0&&G.dist<GATE_GAP*(G.gi+1)-GATE_GAP*.2-300){spawnObs();G.spawn=70+Math.random()*60}}
+  if(G.gi>=Q.length&&!G.boss&&G.dist>=FINISH)G.boss={x:880};
+  if(G.boss){G.boss.x-=v;if(G.boss.x<PX+170){G.score+=500;finish(true)}}
+}
+
+/* ===== วาดภาพ ===== */
+function chedi(x,y,s,c){ctx.fillStyle=c;ctx.beginPath();ctx.moveTo(x,y-110*s);ctx.lineTo(x+22*s,y);ctx.lineTo(x-22*s,y);ctx.fill();ctx.fillRect(x-30*s,y-8*s,60*s,8*s);ctx.fillRect(x-4*s,y-125*s,8*s,18*s)}
+function draw(now){
+  const d=G?G.dist:camT*.3;
+  const sk=ctx.createLinearGradient(0,0,0,GY);sk.addColorStop(0,"#ff8a5c");sk.addColorStop(.6,"#ffd37a");sk.addColorStop(1,"#fff1b8");
+  ctx.fillStyle=sk;ctx.fillRect(0,0,LW,LH);
+  ctx.fillStyle="#fff7";ctx.beginPath();ctx.arc(620,110,46,0,6.3);ctx.fill();
+  ctx.fillStyle="#c9547a";ctx.beginPath();ctx.moveTo(0,GY);for(let x=0;x<=LW;x+=20)ctx.lineTo(x,GY-90-Math.sin((x+d*.15)/90)*35);ctx.lineTo(LW,GY);ctx.fill();
+  for(let i=-1;i<5;i++){const x=((i*260-d*.4)%1300+1300)%1300-200;chedi(x,GY-5,1.1,"#e9b84a")}
+  ctx.fillStyle="#6a2a50";ctx.fillRect(0,GY,LW,LH-GY);
+  ctx.fillStyle="#ffd24a";ctx.fillRect(0,GY,LW,6);
+  ctx.fillStyle="#ffd24a55";for(let i=0;i<22;i++){const x=((i*60-d)%1320+1320)%1320-60;ctx.beginPath();ctx.moveTo(x,GY+14);ctx.lineTo(x+14,GY+28);ctx.lineTo(x,GY+42);ctx.lineTo(x-14,GY+28);ctx.fill()}
+  ctx.textAlign="center";ctx.textBaseline="middle";
+  const bob=Math.sin(now/90)*3;
+  // รถทรงพระลักษมณ์ไล่ตามหลัง
+  const cx=G?30+Math.max(0,(1-G.mul))*0+bob:30;
+  ctx.fillStyle="#c0392b";ctx.fillRect(cx-20,GY-44,80,26);ctx.fillStyle="#ffd24a";ctx.fillRect(cx-20,GY-48,80,6);
+  ctx.fillStyle="#3a1500";[0,50].forEach(o=>{ctx.beginPath();ctx.arc(cx+o,GY-14,14,0,6.3);ctx.fill()});
+  ctx.font="34px serif";ctx.fillText("🤴",cx+20,GY-66);ctx.font="22px serif";ctx.fillText("🏹",cx+55,GY-60);
+  if(!G)return;
+  // เหรียญ สิ่งกีดขวาง
+  ctx.font="28px serif";for(const c of G.cns)ctx.fillText("🪙",c.x+5,c.y+5);
+  ctx.font="44px serif";for(const o of G.obs)ctx.fillText(o.t,o.x+o.w/2,o.y+o.h/2+2);
+  // แท่นหิน
+  if(G.gate)for(const p of G.gate.ps){
+    if(p.st==3&&p.x>LW)continue;
+    ctx.globalAlpha=p.st==3?.35:1;
+    ctx.fillStyle=p.st==1?"#3ddc84":p.st==2?"#d33":"#8a6d3b";ctx.fillRect(p.x,p.y,p.w,22);
+    ctx.fillStyle="#ffd24a";ctx.fillRect(p.x,p.y,p.w,4);
+    ctx.fillStyle="#fff";ctx.font="800 15px Tahoma,sans-serif";ctx.fillText(p.t,p.x+p.w/2,p.y+13);ctx.globalAlpha=1;
+  }
+  if(G.boss){ctx.font="130px serif";ctx.fillText("🐘",G.boss.x,GY-60);ctx.font="40px serif";ctx.fillText("👑",G.boss.x+10,GY-150)}
+  // หนุมาน
+  if(!(G.inv>0&&Math.floor(now/80)%2)){ctx.font="56px serif";ctx.fillText("🐒",PX+18,G.py+30)}
+  if(G.shield>0||G.inv>0&&G.shield>=0&&false){ctx.strokeStyle="#2fd6c3";ctx.lineWidth=3;ctx.beginPath();ctx.arc(PX+18,G.py+30,38,0,6.3);ctx.stroke()}
+  // แถบความคืบหน้า
+  ctx.fillStyle="#0007";ctx.fillRect(100,LH-16,600,8);ctx.fillStyle="#ffd24a";ctx.fillRect(100,LH-16,600*Math.min(1,G.dist/FINISH),8);
+  ctx.font="16px serif";ctx.fillText("🐒",100+600*Math.min(1,G.dist/FINISH),LH-12);
+}
+function loop(now){
+  const dt=Math.min(now-last,50);last=now;camT+=dt;
+  if(G&&!G.over&&!G.paused)update(dt/16.667,dt);
+  draw(now);requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+/* ===== ร้านค้า ===== */
+function openShop(){if(!G||G.over)return;G.paused=true;$("sc").textContent=G.coins;show("s1")}
+function closeShop(){show("");if(G)G.paused=false}
+function buy(k){
+  const pr=k=="shield"?PRICE_SHIELD:PRICE_POTION;
+  if(G.coins<pr){toast("เหรียญไม่พอ");return}
+  if(k=="potion"&&G.hp>=MAX_HP){toast("HP เต็มแล้ว");return}
+  G.coins-=pr;if(k=="shield")G.shield++;else G.hp++;$("sc").textContent=G.coins;hud();
+}
+/* ===== จบเกม + Dashboard ===== */
+function finish(win){
+  if(G.over)return;G.over=true;$("hud").style.display="none";$("qb").style.display="none";
+  const t=Math.round(G.t),acc=G.ok+G.bad?Math.round(G.ok/(G.ok+G.bad)*100):0;let log=[];
+  try{log=JSON.parse(localStorage.getItem("erawandash_log")||"[]");log.push({n:name,no:no,s:G.score,t:t,w:win});log=log.slice(-8);localStorage.setItem("erawandash_log",JSON.stringify(log))}catch(e){}
+  const rows=log.slice().reverse().map(r=>"<tr><td>"+esc(r.n)+" (เลขที่ "+esc(r.no)+")</td><td>"+r.s+"</td><td>"+r.t+" วิ</td><td>"+(r.w?"✅":"❌")+"</td></tr>").join("");
+  $("dash").innerHTML="<h1>"+(win?"🏆 ถึงช้างเอราวัณแล้ว!":"💔 หนุมานพ่ายแพ้")+"</h1><div>"+esc(name)+" · เลขที่ "+esc(no)+"</div><p style='font-size:1.1rem'>⭐ คะแนน <b>"+G.score+"</b><br>✅ ถูก "+G.ok+" · ❌ ผิด "+G.bad+" · แม่นยำ "+acc+"%<br>⏱ เวลา "+t+" วินาที · 🪙 "+G.coins+" · ❤️ "+Math.max(G.hp,0)+"</p><table><tr><th>ผู้เล่น</th><th>คะแนน</th><th>เวลา</th><th>ผล</th></tr>"+rows+"</table><button class='btn' id='again'>🔄 เล่นอีกครั้ง</button>";
+  $("again").onclick=()=>{G=null;show("s0")};show("s2");
+}
+$("go").onclick=start;$("hs").onclick=openShop;$("sx").onclick=closeShop;
+$("b1").onclick=()=>buy("shield");$("b2").onclick=()=>buy("potion");
+$("hm").onclick=()=>{musicOn=!musicOn;$("hm").textContent=musicOn?"🎵":"🔇"};
+</script>
+</body>
+</html>
